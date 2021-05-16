@@ -11,7 +11,7 @@ from .utils import read_yaml
 from scFlash.Datasets import ScDataset as DataSet
 from flash import Task 
 import torchmetrics
-
+import sys
 
 class ExponentialActivation(nn.Module):
 
@@ -165,7 +165,54 @@ class AutoEncoder(nn.Module):
 
         return latent, output
 
-class Base:
+class scTask(Task):
+
+    def __init__(self, learning_rate: float = 1e-3, **kwargs):
+
+        args = ['optimizer',
+                'metrics',
+               ]
+        
+        super(scTask, self).__init__(learning_rate=float(learning_rate),
+                                    **{i:kwargs[i] for i in kwargs if i in args}) 
+
+    def _train(self, trainer, datamodule):
+
+        trainer.fit(self, datamodule = datamodule)
+    
+    def _predict(self, trainer, datamodule):
+
+        o = trainer.predict(self, datamodule = datamodule)
+
+        return o
+
+    def _func(self, x):
+        
+        return self.model._func(x)
+
+    def step(self, batch: Any, batch_idx: int) -> Any:
+    
+        x, y = batch
+        y_hat = self(x)
+        output = {"y_hat": y_hat}
+        losses = {name: l_fn(y_hat, y) for name, l_fn in self.loss_fn.items()}
+        logs = {}
+        for name, metric in self.metrics.items():
+            if isinstance(metric, torchmetrics.metric.Metric):
+                metric(y_hat, y)
+                logs[name] = metric  # log the metric itself if it is of type Metric
+            else:
+                logs[name] = metric(y_hat, y)
+        logs.update(losses)
+        if len(losses.values()) > 1:
+            logs["total_loss"] = sum(losses.values())
+
+        output["loss"] = list(losses.values())[0]
+        output["logs"] = logs
+        output["y"] = y
+        return output
+
+class Base(scTask):
 
     modules = None
 
@@ -198,30 +245,39 @@ class Base:
         except Exception as e:
             
             print(f'\nThe condition --|| {i} ||-- Failed! \n\nPlease provide the required parameters in the "{config_path}" file\n' )
-            exit()
+            sys.exit()
 
         print('\nAll conditions checked successfully!\n\nLoading Data\n')
 
         self.data = DataSet(**data_args)
         data_model_args = self.data.model_args
-        self.model = model(**data_model_args, **model_args, **optim)
+        super().__init__(**optim)
+        self.model = model(helper_class = super(), **data_model_args, **model_args)
+        self.loss_fn = self.model.get_loss()
         gpus = -1 if torch.cuda.is_available() else None
         self.trainer = flash.Trainer(**trainer_args, gpus = gpus)
+
+        for i in ['step','_predict', '_train', 'predict', 'train']:
+
+            fnc = getattr(self.model , i, False)
+            if fnc:
+                self.__dict__[i] = fnc
+        
             
         if train:
             
-            self.train()
+            self.train_model()
             
     
-    def train(self):
+    def train_model(self):
 
         print('\nTraining the model\n')
         print('\nThe Model Parameters')
         print('---------------------\n---------------------')
-        self.model._train(self.trainer, datamodule = self.data) 
+        self._train(self.trainer, datamodule = self.data) 
         print(f'\n{self.model_name} is trained and ready to be used!\n')
 
-    def __call__(self, x):
+    def pre_predict(self, x):
 
         if type(x) == str :
 
@@ -232,53 +288,8 @@ class Base:
       
         else: data = self.data
         print('\nPredicting now\n')
-        x = self.model._predict(self.trainer, data)
+        
+        x = self._predict(self.trainer, data)
 
         return self.model._func(x)
         
-class scTask(Task):
-
-    def __init__(self, learning_rate: float = 1e-3, **kwargs):
-
-        args = ['optimizer',
-                'metrics',
-               ]
-        
-        super(scTask, self).__init__(loss_fn = self.get_loss(),learning_rate=float(learning_rate),
-                                    **{i:kwargs[i] for i in kwargs if i in args}) 
-
-    def _train(self, trainer, datamodule):
-
-        trainer.fit(self, datamodule = datamodule)
-    
-    def _predict(self, trainer, datamodule):
-
-        o = trainer.predict(self, datamodule = datamodule)
-
-        return o
-
-    def _func(self, x):
-        
-        raise NotImplementedError()
-
-    def step(self, batch: Any, batch_idx: int) -> Any:
-    
-        x, y = batch
-        y_hat = self(x)
-        output = {"y_hat": y_hat}
-        losses = {name: l_fn(y_hat, y) for name, l_fn in self.loss_fn.items()}
-        logs = {}
-        for name, metric in self.metrics.items():
-            if isinstance(metric, torchmetrics.metric.Metric):
-                metric(y_hat, y)
-                logs[name] = metric  # log the metric itself if it is of type Metric
-            else:
-                logs[name] = metric(y_hat, y)
-        logs.update(losses)
-        if len(losses.values()) > 1:
-            logs["total_loss"] = sum(losses.values())
-
-        output["loss"] = list(losses.values())[0]
-        output["logs"] = logs
-        output["y"] = y
-        return output

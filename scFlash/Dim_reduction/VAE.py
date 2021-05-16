@@ -132,7 +132,7 @@ class Decoder(nn.Module):
 
 """VAE DEFINITION"""
 
-class VAE():
+class VAE(nn.Module):
     def __init__(self, input_dim, encoder_size=1, batch_size=100,
                  hidden_layer_depth=3, hidden_size=2048, scale=1E-3,
                  dropout_rate=0.,
@@ -140,7 +140,7 @@ class VAE():
                  verbose=True,
                  **kwargs):
 
-        super(VAE, self).__init__(**kwargs)
+        super(VAE, self).__init__()
         basic = Basic()
         input_size = input_dim
         self.encoder = Encoder(input_size, output_size=encoder_size,
@@ -188,7 +188,11 @@ class VAE():
         u_p = self.lmbd(u)
         out = self.decoder(u_p)
         return out , u
-
+    
     def _func(self, x):
-
+ 
         return np.concatenate([i[1] for i in x])
+
+
+
+    

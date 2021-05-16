@@ -1,3 +1,4 @@
+from flash.core import data
 import numpy as np
 from typing import List
 import torch
@@ -6,10 +7,10 @@ import torch.optim as optim
 import torch.nn.functional as F
 from scFlash.utils.modules import AutoEncoder, Linear, scTask
 from typing import Any
-from flash.core.model import predict_context
+
 import numpy as np
 
-class scScope():
+class scScope(nn.Module):
 
     def __init__(
             self,
@@ -19,11 +20,13 @@ class scScope():
             encoder_layers_dim: List,
             decoder_layers_dim: List,
             latent_layer_out_dim: int,
+            helper_class,
             t: int = 2,
+            
             **kwargs
         ):
 
-        super(scScope, self).__init__(**kwargs)
+        super(scScope, self).__init__()
 
         self.t = t
         self.input_dim = input_dim
@@ -46,7 +49,8 @@ class scScope():
 
         self.imputation_model = nn.Sequential(impute_layer1, impute_layer2)
         self.num_batch = num_batch
-        
+        self.helper_class = helper_class
+        self.is_predict = False
     
     def loss_fn(self, y_pred, input_d):
         
@@ -65,8 +69,9 @@ class scScope():
 
         return {'loss': self.loss_fn}
 
-    def forward(self, X, predict = False):
-        if not predict:
+    def forward(self, X):
+       
+        if not self.is_predict:
             X, exp_batch_input = X
                 
             one_hot = torch.zeros_like(X)[:,:self.num_batch].float()
@@ -94,27 +99,23 @@ class scScope():
 
         return output_list, latent_features_list, batch_effect_removal_layer
     
-    def step(self, batch: Any, batch_idx: int) -> Any:
+    def step(self, batch: Any, batch_idx: int,) -> Any:
         
         x, y = batch
         batch = (x, batch_idx), y
-        output = super().step(batch, batch_idx)
+        output = self.helper_class.step(batch, batch_idx)
         
         return output
     
 
     
-    def predict(self,
-        x: Any,
-        batch_idx = None,
-        *args,
-        **kwargs,
-        ) -> Any:
+    def _predict(self, trainer, datamodule):
 
-            
-            predictions = self.forward(x, predict = True)
+        self.is_predict = True
+        o = self.helper_class._predict(trainer, datamodule)
+        self.is_predict = False
 
-            return predictions
+        return o
 
     def _func(self, x):
         

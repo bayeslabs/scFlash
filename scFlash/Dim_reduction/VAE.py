@@ -191,7 +191,7 @@ class VAE(nn.Module):
     
     def _func(self, x):
  
-        return np.concatenate([i[1] for i in x])
+        return np.concatenate([i[0] for i in x])
 
 
 

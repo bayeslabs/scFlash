@@ -157,15 +157,6 @@ class VAE(nn.Module):
         self.input_size = input_size
         self.encoder_size = encoder_size
         self.apply(basic.initialize_weights)
-
-        """self.lr = lr
-        if optimizer == 'Adam':
-            self.optimizer = optim.Adam(self.parameters(), lr=lr)
-        elif optimizer == 'SGD':
-            self.optimizer = optim.SGD(self.parameters(), lr=lr)
-        else:
-            raise ValueError('Not a recognized optimizer')"""
-
         #self.optimizer = optim.Adam(self.parameters(), lr=lr)
         self.is_fit = False
 
@@ -175,7 +166,7 @@ class VAE(nn.Module):
         x_decoded_mean = x_decoded_mean[0]
         kl_loss=nn.functional.kl_div(x, x_decoded_mean, size_average=None, reduce=None, reduction='batchmean', log_target=False)
         loss = nn.functional.binary_cross_entropy(nn.functional.softmax(x_decoded_mean,-1), nn.functional.softmax(x,-1), reduction='sum')   # LOSS FUNCTION REQUIRES INPUT IN THE RANGE OF 0 TO 1
-
+        #loss = nn.functional.binary_cross_entropy(x_decoded_mean,x, reduction='sum')
         return loss+kl_loss
 
 
@@ -192,6 +183,7 @@ class VAE(nn.Module):
     def _func(self, x):
  
         return np.concatenate([i[0] for i in x])
+        
 
 
 

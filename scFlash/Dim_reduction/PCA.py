@@ -3,9 +3,9 @@ import pandas as pd
 import torch
 from scFlash.utils.preprocessing import StandardScaler
 from scFlash.utils.preprocessing import rank_bar_line as rank_bar
+import torch.nn as nn
 
-
-class PCA():
+class PCA(nn.Module):
 
     def __init__(self, data, max_components: int = 10, q: int = None, center: bool = True, niter: int = 2, scaling: bool = True, **kwargs):
 
@@ -16,7 +16,6 @@ class PCA():
         self.niter = niter
         self.scaling = scaling
         self.shape = data.size()
-        self.forward()
 
     def scale(self, data):
 

@@ -59,9 +59,7 @@ class Basic():
         elif activation == 'Sigmoid'.upper():
             model += [nn.Sigmoid()]
         elif activation == 'Tanh'.upper():
-            model += [nn.Tanh()]
-        elif activation == 'Swish'.upper():
-            model += [Swish()]
+            model += [nn.Tanh()]      
         elif type(activation) is str:
             raise ValueError('{} activation not implemented.'.format(activation))
 

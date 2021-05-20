@@ -40,8 +40,8 @@ class Basic():
 
     def initialize_weights(self,m):  #add this to utils file
         if (isinstance(m, nn.Linear) or isinstance(m, nn.Conv1d)):
-            #init.uniform_(m.weight.data,a=0.0,b=1.0)
-            init.xavier_uniform_(m.weight.data)
+            init.uniform_(m.weight.data,a=0.0,b=1.0)
+            #init.xavier_uniform_(m.weight.data)
 
 
     def Layer(self,i, o, activation=None, p=0., bias=True):
